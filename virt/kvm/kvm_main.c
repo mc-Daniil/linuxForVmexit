@@ -4444,6 +4444,11 @@ static long kvm_vcpu_ioctl(struct file *filp,
 	if (mutex_lock_killable(&vcpu->mutex))
 		return -EINTR;
 	switch (ioctl) {
+	case KVM_IOC_FORCE_EXIT: {
+		kvm_make_request(KVM_REQ_IMMEDIATE_EXIT, vcpu);
+		kvm_vcpu_kick(vcpu);
+		return 0;
+	}
 	case KVM_RUN: {
 		struct pid *oldpid;
 		r = -EINVAL;
