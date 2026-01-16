@@ -12,6 +12,7 @@
 
 #include <kvm/iodev.h>
 
+#include <linux/kvm.h>
 #include <linux/kvm_host.h>
 #include <linux/kvm.h>
 #include <linux/module.h>
@@ -49,6 +50,7 @@
 #include <linux/lockdep.h>
 #include <linux/kthread.h>
 #include <linux/suspend.h>
+#include <linux/printk.h> 
 
 #include <asm/processor.h>
 #include <asm/ioctl.h>
@@ -4444,11 +4446,14 @@ static long kvm_vcpu_ioctl(struct file *filp,
 	if (mutex_lock_killable(&vcpu->mutex))
 		return -EINTR;
 	switch (ioctl) {
+	// =========== MY ================
 	case KVM_IOC_FORCE_EXIT: {
-		kvm_make_request(KVM_REQ_IMMEDIATE_EXIT, vcpu);
-		kvm_vcpu_kick(vcpu);
-		return 0;
+		pr_info("KVM DEBUG: ioctl called for vCPU %d\n",
+				vcpu->vcpu_id);
+		r = 0;
+		goto out;
 	}
+	// =========== MY ================
 	case KVM_RUN: {
 		struct pid *oldpid;
 		r = -EINVAL;

@@ -1617,8 +1617,9 @@ struct kvm_pre_fault_memory {
 	__u64 padding[5];
 };
 
+// =========== MY ================
 /* Force immediate VM exit for a vCPU */
 #define KVM_IOC_FORCE_EXIT _IO(KVMIO, 0xF0)
+// =========== MY ================
 
 #endif /* __LINUX_KVM_H */
-
