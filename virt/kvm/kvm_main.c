@@ -4447,12 +4447,14 @@ static long kvm_vcpu_ioctl(struct file *filp,
 		return -EINTR;
 	switch (ioctl) {
 	// =========== MY ================
-	case KVM_IOC_FORCE_EXIT: {
-		pr_info("KVM DEBUG: ioctl called for vCPU %d\n",
-				vcpu->vcpu_id);
-		r = 0;
-		goto out;
-	}
+	// case KVM_IOC_FORCE_EXIT: {
+	// 	pr_info("KVM DEBUG: Setting Trap Flag for vCPU %d\n", vcpu->vcpu_id);
+	// 	vcpu->guest_debug = KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP;
+	// 	kvm_arch_update_guest_debug(vcpu);
+	// 	kvm_vcpu_kick(vcpu);
+	// 	r = 0;
+	// 	goto out;
+	// }
 	// =========== MY ================
 	case KVM_RUN: {
 		struct pid *oldpid;

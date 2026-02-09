@@ -6200,6 +6200,24 @@ static int kvm_get_reg_list(struct kvm_vcpu *vcpu,
 	return 0;
 }
 
+static int my_vcpu_enable_singlestep(struct kvm_vcpu *vcpu)
+{
+    struct kvm_guest_debug dbg = {
+        .control = KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP,
+    };
+
+    return kvm_arch_vcpu_ioctl_set_guest_debug(vcpu, &dbg);
+}
+
+static int my_vcpu_disable_singlestep(struct kvm_vcpu *vcpu)
+{
+    struct kvm_guest_debug dbg = {
+        .control = 0, // всё сбросить
+    };
+
+    return kvm_arch_vcpu_ioctl_set_guest_debug(vcpu, &dbg);
+}
+
 long kvm_arch_vcpu_ioctl(struct file *filp,
 			 unsigned int ioctl, unsigned long arg)
 {
@@ -6218,6 +6236,14 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
 
 	u.buffer = NULL;
 	switch (ioctl) {
+	// ============= MY ============== 
+	case KVM_IOC_FORCE_EXIT: {
+        pr_info("KVM DEBUG (x86): Triggering single-step for vCPU %d\n", vcpu->vcpu_id);
+
+    	r = my_vcpu_enable_singlestep(vcpu);
+    	break;
+    }
+    // =====================================
 	case KVM_GET_LAPIC: {
 		r = -EINVAL;
 		if (!lapic_in_kernel(vcpu))
@@ -11971,10 +11997,23 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
 	}
 
 	r = kvm_x86_vcpu_pre_run(vcpu);
+
 	if (r <= 0)
 		goto out;
 
 	r = vcpu_run(vcpu);
+
+	// =========== MY ============
+    if (vcpu->run->exit_reason == KVM_EXIT_DEBUG) {
+		unsigned long rip = kvm_rip_read(vcpu);
+
+		pr_info("KVM DEBUG: Single-step success! vCPU: %d, RIP: 0x%lx\n",
+				vcpu->vcpu_id, rip);
+
+		/* Отключаем single-step после ОДНОГО шага */
+		my_vcpu_disable_singlestep(vcpu);
+	}
+    // ===========================
 
 out:
 	kvm_put_guest_fpu(vcpu);
