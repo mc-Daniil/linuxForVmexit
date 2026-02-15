@@ -5304,7 +5304,23 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 			// ====== MY ====
 
 			if (vmx_get_rflags(vcpu) & X86_EFLAGS_TF) {
-                 pr_info("KVM: Single-step trap hit! RIP: 0x%lx\n", kvm_rip_read(vcpu));
+				if (vcpu->coverage_count > 0) {
+					unsigned long rip = kvm_rip_read(vcpu);
+
+					pr_info("KVM: Step (remaining: %d) | RIP: 0x%lx\n", vcpu->coverage_count, rip);
+
+					vcpu->coverage_count--;
+
+					if (vcpu->coverage_count > 0) {
+						unsigned long rflags = vmx_get_rflags(vcpu);
+						rflags |= X86_EFLAGS_TF;
+						vmx_set_rflags(vcpu, rflags);
+					}
+					else {
+						pr_info("KVM: Coverage trace finished.\n");
+					}
+					return 1;
+				}
 			}
 
 			// =======

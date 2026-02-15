@@ -6238,10 +6238,12 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
 	switch (ioctl) {
 	// ============= MY ============== 
 	case KVM_IOC_FORCE_EXIT: {
+		int steps = (int)arg;
 		unsigned long rflags;
 		
-		pr_info("KVM: Setting trap flag for single VM-Exit (vcpu=%d)\n",
-			vcpu->vcpu_id);
+		pr_info("KVM: Starting coverage trace for %d steps (vcpu=%d)\n", steps, vcpu->vcpu_id);
+
+		vcpu->coverage_count = steps;
 		
 		// Получаем текущие RFLAGS
 		rflags = kvm_x86_call(get_rflags)(vcpu);
