@@ -5301,29 +5301,51 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 			 * as appropriate for all other VM-Exits types.
 			 */
 
-			// ====== MY ====
+            // ====== MY ====
+            if (vmx_get_rflags(vcpu) & X86_EFLAGS_TF) {
+                if (vcpu->coverage_count != 0) {
+                    unsigned long rip = kvm_rip_read(vcpu);
 
-			if (vmx_get_rflags(vcpu) & X86_EFLAGS_TF) {
-				if (vcpu->coverage_count > 0) {
-					unsigned long rip = kvm_rip_read(vcpu);
+                    // 1. Логирование
+                    if (vcpu->coverage_count > 0) {
+                        pr_info("KVM: Step (remaining: %d) | RIP: 0x%lx\n", vcpu->coverage_count, rip);
+                    } else {
+                        pr_info("KVM: Step (infinite) | RIP: 0x%lx\n", rip);
+                    }
 
-					pr_info("KVM: Step (remaining: %d) | RIP: 0x%lx\n", vcpu->coverage_count, rip);
+                    // 2. Уменьшение счетчика
+                    if (vcpu->coverage_count > 0) {
+                        vcpu->coverage_count--;
+                    }
 
-					vcpu->coverage_count--;
+                    // 3. Продолжение трассировки (установка TF)
+                    if (vcpu->coverage_count != 0) {
+                        u32 intr_info = vmcs_read32(GUEST_INTERRUPTIBILITY_INFO);
+                        
+                        // Проверяем "тень прерываний" (после STI или MOV SS)
+                        if (intr_info & (GUEST_INTR_STATE_STI | GUEST_INTR_STATE_MOV_SS)) {
 
-					if (vcpu->coverage_count > 0) {
-						unsigned long rflags = vmx_get_rflags(vcpu);
-						rflags |= X86_EFLAGS_TF;
-						vmx_set_rflags(vcpu, rflags);
-					}
-					else {
-						pr_info("KVM: Coverage trace finished.\n");
-					}
-					return 1;
-				}
-			}
+                            // Вместо этого просим процессор доставить отложенный #DB.
+                            vmcs_writel(GUEST_PENDING_DBG_EXCEPTIONS, DR6_BS);
+                        } else {
+                            // БЕЗОПАСНО: Ставим TF в RFLAGS
+                            unsigned long rflags = vmx_get_rflags(vcpu);
+                            rflags |= X86_EFLAGS_TF;
+                            vmx_set_rflags(vcpu, rflags);
+                            
+                            // Очищаем pending, чтобы не было старого мусора
+                            vmcs_writel(GUEST_PENDING_DBG_EXCEPTIONS, 0);
+                        }
+                    } else {
+                        pr_info("KVM: Coverage trace finished.\n");
+                        // Убедимся, что ничего не висит, когда закончили
+                        vmcs_writel(GUEST_PENDING_DBG_EXCEPTIONS, 0);
+                    }
 
-			// =======
+                    return 1;
+                }
+            }
+            // =======
 
 			if (is_icebp(intr_info))
 				WARN_ON(!skip_emulated_instruction(vcpu));

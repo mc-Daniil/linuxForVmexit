@@ -6244,6 +6244,7 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
 		pr_info("KVM: Starting coverage trace for %d steps (vcpu=%d)\n", steps, vcpu->vcpu_id);
 
 		vcpu->coverage_count = steps;
+		vcpu->coverage_enable = true;
 		
 		// Получаем текущие RFLAGS
 		rflags = kvm_x86_call(get_rflags)(vcpu);
@@ -6257,6 +6258,14 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
     	r = 0;
     	break;
     }
+	case KVM_IOC_STOP_COVERAGE: {
+		vcpu->coverage_enable = false;
+		vcpu->coverage_count = 0;
+		pr_info("KVM: Coverage STOPPED\n");
+
+		r = 0;
+    	break;
+	}
     // =====================================
 	case KVM_GET_LAPIC: {
 		r = -EINVAL;
