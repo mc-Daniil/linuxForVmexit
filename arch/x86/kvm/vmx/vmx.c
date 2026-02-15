@@ -5300,6 +5300,15 @@ static int handle_exception_nmi(struct kvm_vcpu *vcpu)
 			 * have already expired.  Note, the CPU sets/clears BS
 			 * as appropriate for all other VM-Exits types.
 			 */
+
+			// ====== MY ====
+
+			if (vmx_get_rflags(vcpu) & X86_EFLAGS_TF) {
+                 pr_info("KVM: Single-step trap hit! RIP: 0x%lx\n", kvm_rip_read(vcpu));
+			}
+
+			// =======
+
 			if (is_icebp(intr_info))
 				WARN_ON(!skip_emulated_instruction(vcpu));
 			else if ((vmx_get_rflags(vcpu) & X86_EFLAGS_TF) &&

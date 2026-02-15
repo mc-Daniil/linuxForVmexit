@@ -6200,23 +6200,23 @@ static int kvm_get_reg_list(struct kvm_vcpu *vcpu,
 	return 0;
 }
 
-static int my_vcpu_enable_singlestep(struct kvm_vcpu *vcpu)
-{
-    struct kvm_guest_debug dbg = {
-        .control = KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP,
-    };
+// static int my_vcpu_enable_singlestep(struct kvm_vcpu *vcpu)
+// {
+//     struct kvm_guest_debug dbg = {
+//         .control = KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP,
+//     };
 
-    return kvm_arch_vcpu_ioctl_set_guest_debug(vcpu, &dbg);
-}
+//     return kvm_arch_vcpu_ioctl_set_guest_debug(vcpu, &dbg);
+// }
 
-static int my_vcpu_disable_singlestep(struct kvm_vcpu *vcpu)
-{
-    struct kvm_guest_debug dbg = {
-        .control = 0, // всё сбросить
-    };
+// static int my_vcpu_disable_singlestep(struct kvm_vcpu *vcpu)
+// {
+//     struct kvm_guest_debug dbg = {
+//         .control = 0, // всё сбросить
+//     };
 
-    return kvm_arch_vcpu_ioctl_set_guest_debug(vcpu, &dbg);
-}
+//     return kvm_arch_vcpu_ioctl_set_guest_debug(vcpu, &dbg);
+// }
 
 long kvm_arch_vcpu_ioctl(struct file *filp,
 			 unsigned int ioctl, unsigned long arg)
@@ -6238,9 +6238,21 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
 	switch (ioctl) {
 	// ============= MY ============== 
 	case KVM_IOC_FORCE_EXIT: {
-        pr_info("KVM DEBUG (x86): Triggering single-step for vCPU %d\n", vcpu->vcpu_id);
+		unsigned long rflags;
+		
+		pr_info("KVM: Setting trap flag for single VM-Exit (vcpu=%d)\n",
+			vcpu->vcpu_id);
+		
+		// Получаем текущие RFLAGS
+		rflags = kvm_x86_call(get_rflags)(vcpu);
+		
+		// Устанавливаем Trap Flag (бит 8)
+		rflags |= X86_EFLAGS_TF;
+		
+		// Записываем RFLAGS обратно в vcpu
+		kvm_x86_call(set_rflags)(vcpu, rflags);
 
-    	r = my_vcpu_enable_singlestep(vcpu);
+    	r = 0;
     	break;
     }
     // =====================================
@@ -9223,6 +9235,12 @@ static int kvm_vcpu_do_singlestep(struct kvm_vcpu *vcpu)
 {
 	struct kvm_run *kvm_run = vcpu->run;
 
+	// ===== MY =====
+
+	// pr_info("KVM: Single-step trap hit! RIP: 0x%lx\n", kvm_rip_read(vcpu));
+
+	// ==========
+
 	if (vcpu->guest_debug & KVM_GUESTDBG_SINGLESTEP) {
 		kvm_run->debug.arch.dr6 = DR6_BS | DR6_ACTIVE_LOW;
 		kvm_run->debug.arch.pc = kvm_get_linear_rip(vcpu);
@@ -11660,6 +11678,18 @@ static int vcpu_run(struct kvm_vcpu *vcpu)
 			r = vcpu_block(vcpu);
 		}
 
+		// ======= MY ========
+		// if (r <= 0 && vcpu->run->exit_reason == KVM_EXIT_DEBUG) {
+        //     /* Здесь читаем RIP для трассировки */
+        //     unsigned long rip = kvm_rip_read(vcpu);
+        //     pr_info_ratelimited("Trace RIP: 0x%lx\n", rip);
+
+        //     /* Сбрасываем причину выхода и заставляем цикл продолжиться */
+        //     vcpu->run->exit_reason = 0;
+        //     r = 1; 
+        // }
+		// ==================
+
 		if (r <= 0)
 			break;
 
@@ -12004,15 +12034,12 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu)
 	r = vcpu_run(vcpu);
 
 	// =========== MY ============
-    if (vcpu->run->exit_reason == KVM_EXIT_DEBUG) {
-		unsigned long rip = kvm_rip_read(vcpu);
+    // if (vcpu->run->exit_reason == KVM_EXIT_DEBUG) {
+	// 	unsigned long rip = kvm_rip_read(vcpu);
 
-		pr_info("KVM DEBUG: Single-step success! vCPU: %d, RIP: 0x%lx\n",
-				vcpu->vcpu_id, rip);
-
-		/* Отключаем single-step после ОДНОГО шага */
-		my_vcpu_disable_singlestep(vcpu);
-	}
+	// 	pr_info("KVM DEBUG: Single-step success! vCPU: %d, RIP: 0x%lx\n",
+	// 			vcpu->vcpu_id, rip);
+	// }
     // ===========================
 
 out:
