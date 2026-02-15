@@ -1,18 +1,8 @@
-Linux kernel
-============
+**Modified files:**
 
-There are several guides for kernel developers and users. These guides can
-be rendered in a number of formats, like HTML and PDF. Please read
-Documentation/admin-guide/README.rst first.
+1. `include/uapi/linux/kvm.h` - new ioctl
+2. `arch/x86/kvm/x86.c` - processing ioctl and setting trap-flag
+3. `arch/x86/kvm/vmx/vmx.c` - processing after vmexit with trap-flag
 
-In order to build the documentation, use ``make htmldocs`` or
-``make pdfdocs``.  The formatted documentation can also be read online at:
+All my code is marked with `= MY =`
 
-    https://www.kernel.org/doc/html/latest/
-
-There are various text files in the Documentation/ subdirectory,
-several of them using the reStructuredText markup notation.
-
-Please read the Documentation/process/changes.rst file, as it contains the
-requirements for building and running the kernel, and information about
-the problems which may result by upgrading your kernel.
